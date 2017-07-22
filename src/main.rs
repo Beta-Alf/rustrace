@@ -8,7 +8,8 @@ use std::option::Option;
 
 use std::ops::Add;
 use std::ops::Sub;
-use std::cmp::min;
+
+use std::f32;
 
 use image::Pixel;
 
@@ -143,27 +144,47 @@ fn generate_value(x_pos : f32, y_pos: f32, field_of_view : f32, spheres : &Vec<S
     let x_angle = ((x_pos - 0.5) * radians_FoV).sin();
     let y_angle = ((y_pos - 0.5) * radians_FoV).sin();
     let direction = Vec3{x: x_angle, y: y_angle, z: 1.0}; //Ortho projection for now
-    let position = Vec3{x: 0.0, y: 0.0, z: 0.0};
-    let ray = Ray{ origin: position, direction: direction};
+    let origin = Vec3{x: 0.0, y: 0.0, z: 0.0};
+    let ray = Ray{ origin: origin, direction: direction};
 
     let mut color = image::Rgb::from_channels(0, 0, 0, 255);
 
+    let first_hit = get_first_hit(&ray, spheres);
+
+    match first_hit {
+        Some(hit) => calculate_shading(&hit),
+        None => image::Rgb::from_channels(0, 0, 0, 255),
+    }
+}
+
+fn get_first_hit(ray : &Ray, spheres : &Vec<Sphere>) -> Option<Hit>
+{
+    let mut first_hit : Option<Hit> = None;
+    let mut distance_to_closest = f32::MAX;
+
     for sphere in spheres {
         let cur_hit = sphere.get_first_collision(&ray);
-        
 
         match cur_hit {
-            Some(hit) => {
+            Some(Hit{position, normal}) => {
+                let d = position.length();
+                if  d < distance_to_closest {
+                    first_hit = cur_hit;
+                    distance_to_closest = d;
+                }
+            },
+            None => (),
 
-                let shade = 1.0 - hit.normal.dot(&Vec3{x: 0.0, y: 0.0, z: 1.0});
-                let c = (shade * 255.0) as u8;
-                // println!("d: {:?}, c: {:?}", d, c);
-                color = image::Rgb::from_channels(c, c, c, 255) },
-            None => color = image::Rgb::from_channels(0, 0, 0, 255),
         };
     };
+    first_hit
+}
 
-   color 
+fn calculate_shading(hit : &Hit) -> image::Rgb<u8> {
+    let shade = 1.0 - hit.normal.dot(&Vec3{x: 0.0, y: 0.0, z: 1.0});
+    let c = (shade * 255.0) as u8;
+    // println!("d: {:?}, c: {:?}", d, c);
+    image::Rgb::from_channels(c, c, c, 255)
 }
 
 fn get_filename() -> String {
