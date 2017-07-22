@@ -8,6 +8,7 @@ use std::option::Option;
 
 use std::ops::Add;
 use std::ops::Sub;
+use std::ops::Mul;
 
 use std::f32;
 
@@ -20,6 +21,10 @@ struct Vec3{
     z : f32,
 }
 
+fn clamp(x : f32, min : f32, max : f32) -> f32{
+    x.max(min).min(max)
+}
+
 impl Vec3{
 
     fn length(&self) -> f32 {
@@ -30,13 +35,21 @@ impl Vec3{
         self.x*other.x + self.y*other.y + self.z*other.z
     }
 
-    fn mult(self, other : f32) -> Vec3 {
+    fn mult(&self, other : f32) -> Vec3 {
         Vec3{x: self.x * other, y: self.y * other, z: self.z * other}
     }
 
     fn normed(&self) -> Vec3{
         let l = self.length();
         Vec3{ x: self.x/l, y: self.y/l, z:self.z/l}
+    }
+
+    fn clamp(&self, min : &Vec3, max : &Vec3) -> Vec3{
+        Vec3{
+            x: clamp(self.x, min.x, max.x),
+            y: clamp(self.y, min.y, max.y),
+            z: clamp(self.z, min.z, max.z),
+        }
     }
 }
 
@@ -53,6 +66,14 @@ impl Sub for Vec3 {
 
     fn sub(self, other: Vec3) -> Vec3 {
         Vec3 { x: self.x - other.x, y: self.y - other.y, z: self.z - other.z }
+    }
+}
+
+impl Mul for Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, other : Vec3) -> Vec3 {
+        Vec3{x: self.x * other.x, y: self.y * other.y, z: self.z * other.z}
     }
 }
 
@@ -77,22 +98,23 @@ struct Hit{
     normal : Vec3,
 }
 
+struct Light{
+    color : Vec3,
+    position : Vec3,
+}
+
+struct Scene{
+    objects : Vec<Sphere>,
+    lights : Vec<Light>,
+}
+
 impl CollisionObject for Sphere{
     fn get_first_collision(&self, ray : &Ray) -> Option<Hit> {
-        // println!("Intersecting ray: {:?} with sphere {:?}", &ray, self);
 
         let difference = ray.origin - self.origin;
         let dir = ray.direction.normed();
 
         let radicand = (dir.dot(&difference)).powi(2) - difference.dot(&difference) + self.radius.powi(2);
-
-        // println!("difference: {:?}", difference);
-        // println!("dot: {:?}", dir.dot(&difference));
-        // println!("dot sq: {:?}", dir.dot(&difference).powi(2));
-        // println!("length: {:?}", difference.length());
-        // println!("length sq: {:?}", difference.length().powi(2));
-        // println!("radius: {:?}", self.radius);
-        // println!("radicand : {:?}", radicand);
 
         if radicand < 0.0 {
             return None
@@ -102,7 +124,10 @@ impl CollisionObject for Sphere{
 
         let dist = (exp1+radicand.sqrt()).min(exp1-radicand.sqrt());
 
-        // println!("distance: {:?}", dist);
+        if dist < 0.0 {
+            // The hit is before the start of the ray
+            return None
+        }
 
         let hitpoint = ray.origin + ray.direction.mult(dist);
         let normal = (hitpoint - self.origin).normed();
@@ -119,40 +144,49 @@ fn main() {
     let imgy : u32 = 800;
 
     let mut spheres : Vec<Sphere> = Vec::new();
-
     spheres.push(Sphere{ origin: Vec3 {x: 0.0, y: 0.0, z: 2.0}, radius: 0.1});
+    spheres.push(Sphere{ origin: Vec3 {x: 0.5, y: 0.0, z: 2.0}, radius: 0.2});
+
+    let mut lights : Vec<Light> = Vec::new();
+    lights.push(Light{ color: Vec3 {x: 1.0, y: 0.0, z: 0.0}, position : Vec3 { x: 0.0, y: 0.0, z: 0.0}});
+    lights.push(Light{ color: Vec3 {x: 0.0, y: 1.0, z: 0.0}, position : Vec3 { x: 1.0, y: 0.0, z: 2.0}});
+    lights.push(Light{ color: Vec3 {x: 0.0, y: 0.0, z: 1.0}, position : Vec3 { x: 0.0, y: 1.0, z: 2.0}});
+    lights.push(Light{ color: Vec3 {x: 1.0, y: 0.0, z: 0.0}, position : Vec3 { x: 0.0, y: -1.0, z: 2.0}});
 
     let mut imgbuf = image::ImageBuffer::new(imgx, imgy);
-        // Iterate over the coordinates and pixels of the image
 
-    //let val = generate_value(0.5, 0.5, 50.0, &spheres);
+    let scene = Scene{objects: spheres, lights: lights};
+
+    // Iterate over the coordinates and pixels of the image
+
+    // let val = generate_value(0.5, 0.5, 50.0, &spheres);
     // let val2 = generate_value(0.0, 0.0, 50.0, &spheres);
 
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
 
-        *pixel = generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &spheres);
-
+        *pixel = generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
     };
 
     write_image(&imgbuf);
 }
 
-fn generate_value(x_pos : f32, y_pos: f32, field_of_view : f32, spheres : &Vec<Sphere>) -> image::Rgb<u8> {
+fn generate_value(x_pos : f32, y_pos: f32, field_of_view : f32, scene : &Scene) -> image::Rgb<u8> {
 
 
-    let radians_FoV = field_of_view.to_radians();
-    let x_angle = ((x_pos - 0.5) * radians_FoV).sin();
-    let y_angle = ((y_pos - 0.5) * radians_FoV).sin();
+    let radians_fov = field_of_view.to_radians();
+    let x_angle = ((x_pos - 0.5) * radians_fov).sin();
+    let y_angle = ((y_pos - 0.5) * radians_fov).sin();
+
     let direction = Vec3{x: x_angle, y: y_angle, z: 1.0}; //Ortho projection for now
     let origin = Vec3{x: 0.0, y: 0.0, z: 0.0};
     let ray = Ray{ origin: origin, direction: direction};
 
-    let mut color = image::Rgb::from_channels(0, 0, 0, 255);
+    let first_hit = get_first_hit(&ray, &scene.objects);
 
-    let first_hit = get_first_hit(&ray, spheres);
+    // TODO: Secondary hits
 
     match first_hit {
-        Some(hit) => calculate_shading(&hit),
+        Some(hit) => calculate_shading(&hit, &scene),
         None => image::Rgb::from_channels(0, 0, 0, 255),
     }
 }
@@ -166,7 +200,7 @@ fn get_first_hit(ray : &Ray, spheres : &Vec<Sphere>) -> Option<Hit>
         let cur_hit = sphere.get_first_collision(&ray);
 
         match cur_hit {
-            Some(Hit{position, normal}) => {
+            Some(Hit{position, ..}) => {
                 let d = position.length();
                 if  d < distance_to_closest {
                     first_hit = cur_hit;
@@ -180,11 +214,40 @@ fn get_first_hit(ray : &Ray, spheres : &Vec<Sphere>) -> Option<Hit>
     first_hit
 }
 
-fn calculate_shading(hit : &Hit) -> image::Rgb<u8> {
-    let shade = 1.0 - hit.normal.dot(&Vec3{x: 0.0, y: 0.0, z: 1.0});
-    let c = (shade * 255.0) as u8;
-    // println!("d: {:?}, c: {:?}", d, c);
-    image::Rgb::from_channels(c, c, c, 255)
+fn calculate_shading(hit : &Hit, scene : &Scene) -> image::Rgb<u8> {
+    let zeros = Vec3{x: 0.0, y: 0.0, z: 0.0};
+    let ones = Vec3{x: 1.0, y: 1.0, z: 1.0};
+
+    let mut diffuse = Vec3{x: 0.0, y: 0.0, z: 0.0};
+
+    for light in &scene.lights {
+        // TODO: visibility query
+        let light_vec = light.position - hit.position;
+        let epsilon = 0.000001;
+        let offset_pos = hit.position + hit.normal.mult(epsilon);
+
+        let light_vec_normed = light_vec.normed();
+
+        let occluder = get_first_hit(&Ray{origin: offset_pos, direction: light_vec_normed}, &scene.objects);
+
+        let mut lambert = hit.normal.dot(&light_vec);
+
+        match occluder {
+            None => (),
+            Some(occluder_hit) => {
+                if (occluder_hit.position - hit.position).length() < light_vec.length(){
+                    lambert = 0.0;
+                }
+            }
+        };
+        
+        let color = light.color.mult(lambert);
+        diffuse = diffuse + color;
+    };
+
+    diffuse = diffuse.clamp(&zeros, &ones).mult(255.0);
+
+    image::Rgb::from_channels(diffuse.x as u8, diffuse.y as u8, diffuse.z as u8, 255)
 }
 
 fn get_filename() -> String {
