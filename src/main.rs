@@ -1,4 +1,5 @@
 extern crate image;
+extern crate time;
 
 
 use std::path::Path;
@@ -138,13 +139,13 @@ impl CollisionObject for Sphere{
 
 fn main() {
 
-    println!("Hello World");
+
 
     let imgx : u32 = 800;
     let imgy : u32 = 800;
 
     let mut spheres : Vec<Sphere> = Vec::new();
-    spheres.push(Sphere{ origin: Vec3 {x: 0.0, y: 0.0, z: 2.0}, radius: 0.1});
+    spheres.push(Sphere{ origin: Vec3 {x: 0.0, y: 0.0, z: 2.0}, radius: 0.2});
     spheres.push(Sphere{ origin: Vec3 {x: 0.5, y: 0.0, z: 2.0}, radius: 0.2});
 
     let mut lights : Vec<Light> = Vec::new();
@@ -162,10 +163,18 @@ fn main() {
     // let val = generate_value(0.5, 0.5, 50.0, &spheres);
     // let val2 = generate_value(0.0, 0.0, 50.0, &spheres);
 
+    let start = time::PreciseTime::now();
+
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
 
         *pixel = generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
     };
+
+    let end = time::PreciseTime::now();
+
+    let duration = start.to(end);
+
+    println!("rendering took: {:?} milliseconds", duration.num_milliseconds());
 
     write_image(&imgbuf);
 }
