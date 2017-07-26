@@ -186,7 +186,12 @@ fn main() {
 
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
 
-        *pixel = generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        let color = generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+
+
+        let final_col = color.mult(255.0);
+
+        *pixel = image::Rgb::from_channels(final_col.x as u8, final_col.y as u8, final_col.z as u8, 255);
     };
 
     let end = time::PreciseTime::now();
@@ -198,7 +203,7 @@ fn main() {
     write_image(&imgbuf);
 }
 
-fn generate_value(x_pos : f32, y_pos: f32, field_of_view : f32, scene : &Scene) -> image::Rgb<u8> {
+fn generate_value(x_pos : f32, y_pos: f32, field_of_view : f32, scene : &Scene) -> Vec3 {
 
 
     let radians_fov = field_of_view.to_radians();
@@ -239,9 +244,7 @@ fn generate_value(x_pos : f32, y_pos: f32, field_of_view : f32, scene : &Scene) 
 
     }
 
-    image::Rgb::from_channels(color.x as u8, color.y as u8, color.z as u8, 255)
-
-
+    color
 }
 
 fn get_first_hit(ray : &Ray, spheres : &Vec<Sphere>) -> Option<Hit>
@@ -303,9 +306,13 @@ fn calculate_shading(hit : &Hit, scene : &Scene) -> Vec3 {
         diffuse += contrib;
     };
 
-    diffuse = diffuse.clamp(&zeros, &ones).mult(255.0);
+    diffuse = diffuse.clamp(&zeros, &ones);
 
-    diffuse
+    let ambient = Vec3{x: 0.1, y: 0.1, z: 0.1};
+
+    let final_col = (ambient + diffuse).clamp(&zeros, &ones);
+
+    final_col
 }
 
 fn get_filename() -> String {
