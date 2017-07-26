@@ -234,9 +234,9 @@ fn generate_value(x_pos : f32, y_pos: f32, field_of_view : f32, scene : &Scene) 
         };
 
         let contrib_factor = match bounce {
-            0 => 1.0 ,
-            1 => 1.0 ,
-            2 => 1.0 ,
+            0 => 0.6 ,
+            1 => 0.3 ,
+            2 => 0.1 ,
             _ => 0.0 ,
         };
 
