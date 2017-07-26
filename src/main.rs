@@ -184,12 +184,19 @@ fn main() {
 
     let start = time::PreciseTime::now();
 
+    let weight = 1.0 / 4.0;
+
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
 
-        let color = generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        let mut color = Vec3{x: 0.0, y: 0.0, z: 0.0};
+        color += generate_value((x as f32) + 0.25 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        color += generate_value((x  as f32 ) -0.25 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        color += generate_value(x as f32 / imgx as f32, (y as f32) + 0.25 / imgy as f32, 50.0, &scene);
+        color += generate_value(x as f32 / imgx as f32, (y as f32) - 0.25 / imgy as f32, 50.0, &scene);
 
 
-        let final_col = color.mult(255.0);
+
+        let final_col = color.mult(255.0 * weight);
 
         *pixel = image::Rgb::from_channels(final_col.x as u8, final_col.y as u8, final_col.z as u8, 255);
     };
@@ -308,7 +315,7 @@ fn calculate_shading(hit : &Hit, scene : &Scene) -> Vec3 {
 
     diffuse = diffuse.clamp(&zeros, &ones);
 
-    let ambient = Vec3{x: 0.1, y: 0.1, z: 0.1};
+    let ambient = Vec3{x: 0.6, y: 0.6, z: 0.6};
 
     let final_col = (ambient + diffuse).clamp(&zeros, &ones);
 
