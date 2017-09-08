@@ -144,6 +144,7 @@ impl CollisionObject for Sphere{
 
         let exp1 = -1.0 * ray.direction.dot(&difference);
 
+
         let dist = (exp1+radicand.sqrt()).min(exp1-radicand.sqrt());
 
         if dist < 0.0 {
@@ -168,10 +169,10 @@ fn main() {
     spheres.push(Sphere{ origin: Vec3 {x: 0.5, y: 0.0, z: 2.0}, radius: 0.2});
 
     let mut lights : Vec<Light> = Vec::new();
-    lights.push(Light{ color: Vec3 {x: 1.0, y: 0.0, z: 0.0}, position : Vec3 { x: 0.0, y: 0.0, z: 0.0}});
+    lights.push(Light{ color: Vec3 {x: 1.0, y: 1.0, z: 1.0}, position : Vec3 { x: 0.0, y: 0.0, z: -10.0}});
     //lights.push(Light{ color: Vec3 {x: 0.0, y: 1.0, z: 0.0}, position : Vec3 { x: 1.0, y: 0.0, z: 1.8}});
-    lights.push(Light{ color: Vec3 {x: 0.0, y: 0.0, z: 1.0}, position : Vec3 { x: 0.0, y: 1.0, z: 2.0}});
-    lights.push(Light{ color: Vec3 {x: 0.0, y: 1.0, z: 0.0}, position : Vec3 { x: 0.5, y: -1.0, z: 2.0}});
+    //lights.push(Light{ color: Vec3 {x: 0.0, y: 0.0, z: 1.0}, position : Vec3 { x: 0.0, y: 1.0, z: 2.0}});
+    //lights.push(Light{ color: Vec3 {x: 0.0, y: 1.0, z: 0.0}, position : Vec3 { x: 0.5, y: -1.0, z: 2.0}});
 
     let mut imgbuf = image::ImageBuffer::new(imgx, imgy);
 
@@ -184,15 +185,20 @@ fn main() {
 
     let start = time::PreciseTime::now();
 
-    let weight = 1.0 / 4.0;
+    let weight = 1.0 / 5.0;
 
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
 
         let mut color = Vec3{x: 0.0, y: 0.0, z: 0.0};
-        color += generate_value((x as f32) + 0.25 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
-        color += generate_value((x  as f32 ) -0.25 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
-        color += generate_value(x as f32 / imgx as f32, (y as f32) + 0.25 / imgy as f32, 50.0, &scene);
-        color += generate_value(x as f32 / imgx as f32, (y as f32) - 0.25 / imgy as f32, 50.0, &scene);
+        color += generate_value(((x as f32) + 0.25) / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        color += generate_value(((x  as f32 ) -0.25) / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        color += generate_value(x as f32 / imgx as f32, ((y as f32) + 0.25) / imgy as f32, 50.0, &scene);
+        color += generate_value(x as f32 / imgx as f32, ((y as f32) - 0.25) / imgy as f32, 50.0, &scene);
+
+        color += generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        // color += generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        // color += generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
+        // color += generate_value(x as f32 / imgx as f32, y as f32 / imgy as f32, 50.0, &scene);
 
 
 
@@ -288,8 +294,7 @@ fn calculate_shading(hit : &Hit, scene : &Scene) -> Vec3 {
     for light in &scene.lights {
 
         let light_vec = light.position - hit.position;
-        let epsilon = 0.000001;
-        let offset_pos = hit.position + hit.normal.mult(epsilon);
+        let offset_pos = hit.position;
 
         let light_vec_normed = light_vec.normed();
 
@@ -297,7 +302,7 @@ fn calculate_shading(hit : &Hit, scene : &Scene) -> Vec3 {
 
         let lv = (light_vec + view_vec).normed();
 
-        let mut lambert = hit.normal.dot(&lv);
+        let lambert = hit.normal.dot(&lv);
 
         match occluder {
             None => (),

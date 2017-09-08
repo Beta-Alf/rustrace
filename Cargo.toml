@@ -6,3 +6,6 @@ authors = ["Florian Wagner <florian.bonn@gmail.com>"]
 [dependencies]
 image = "0.14.0"
 time = "0.1.38"
+
+[profile.release]
+debug = true
