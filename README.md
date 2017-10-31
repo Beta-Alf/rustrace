@@ -4,9 +4,9 @@ RUSTRACE
 
 ## Usage
 
-'''
+```
 git clone git@github.com:Beta-Alf/rustrace.git
 
 cargo build --release
 cargo run --release
-'''
+```
